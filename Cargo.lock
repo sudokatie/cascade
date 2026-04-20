@@ -357,6 +357,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "cascade_game"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "engine_ai",
+ "engine_audio",
+ "engine_core",
+ "engine_network",
+ "engine_physics",
+ "engine_render",
+ "engine_ui",
+ "engine_world",
+ "glam",
+ "hecs",
+ "ron",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "cascade_server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "engine_ai",
+ "engine_core",
+ "engine_network",
+ "engine_world",
+ "glam",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3319,42 +3355,6 @@ checksum = "c8323304221c2a851516f22236c5722a72eaa19749016521d6dff0824447d96d"
 dependencies = [
  "displaydoc",
  "zerovec",
-]
-
-[[package]]
-name = "titan_game"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "engine_ai",
- "engine_audio",
- "engine_core",
- "engine_network",
- "engine_physics",
- "engine_render",
- "engine_ui",
- "engine_world",
- "glam",
- "hecs",
- "ron",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tracing",
-]
-
-[[package]]
-name = "titan_server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "engine_ai",
- "engine_core",
- "engine_network",
- "engine_world",
- "glam",
- "tokio",
- "tracing",
 ]
 
 [[package]]
