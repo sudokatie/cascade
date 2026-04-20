@@ -14,6 +14,8 @@ pub enum LoopPhaseSpawn {
     Day,
     /// Spawns during dusk.
     Dusk,
+    /// Spawns during night.
+    Night,
     /// Spawns during midnight.
     Midnight,
     /// Spawns at any phase.
@@ -161,6 +163,35 @@ impl HostileType {
                 min_loop: 1,
             },
         }
+    }
+
+    /// Get loop-aware spawn condition as (LoopPhase, min_loop_number).
+    ///
+    /// Returns the phase when this creature spawns and the minimum loop required.
+    /// - TimeWraith: (Midnight, loop >= 3)
+    /// - LoopStalker: (Dusk, loop >= 5)
+    /// - EchoBeast: (Day, any loop)
+    /// - TemporalParasite: (Any, loop >= 2)
+    /// - ChronoSpider: (Night, any loop)
+    #[must_use]
+    pub fn loop_aware_spawn(&self) -> (LoopPhaseSpawn, u32) {
+        match self {
+            HostileType::TimeWraith => (LoopPhaseSpawn::Midnight, 3),
+            HostileType::LoopStalker => (LoopPhaseSpawn::Dusk, 5),
+            HostileType::EchoBeast => (LoopPhaseSpawn::Day, 1),
+            HostileType::TemporalParasite => (LoopPhaseSpawn::Any, 2),
+            HostileType::ChronoSpider => (LoopPhaseSpawn::Midnight, 1),
+        }
+    }
+
+    /// Check if this creature can spawn given the current phase and loop number.
+    #[must_use]
+    pub fn can_spawn(&self, current_phase: LoopPhaseSpawn, current_loop: u32) -> bool {
+        let (required_phase, min_loop) = self.loop_aware_spawn();
+        if current_loop < min_loop {
+            return false;
+        }
+        required_phase == LoopPhaseSpawn::Any || required_phase == current_phase
     }
 
     /// Get display name for this creature type.
@@ -785,5 +816,91 @@ mod tests {
         assert_ne!(LoopPhaseSpawn::Dawn, LoopPhaseSpawn::Day);
         assert_ne!(LoopPhaseSpawn::Dusk, LoopPhaseSpawn::Midnight);
         assert_ne!(LoopPhaseSpawn::Any, LoopPhaseSpawn::Dawn);
+    }
+
+    #[test]
+    fn test_loop_aware_spawn_time_wraith() {
+        let (phase, min_loop) = HostileType::TimeWraith.loop_aware_spawn();
+        assert_eq!(phase, LoopPhaseSpawn::Midnight);
+        assert_eq!(min_loop, 3);
+    }
+
+    #[test]
+    fn test_loop_aware_spawn_loop_stalker() {
+        let (phase, min_loop) = HostileType::LoopStalker.loop_aware_spawn();
+        assert_eq!(phase, LoopPhaseSpawn::Dusk);
+        assert_eq!(min_loop, 5);
+    }
+
+    #[test]
+    fn test_loop_aware_spawn_echo_beast() {
+        let (phase, min_loop) = HostileType::EchoBeast.loop_aware_spawn();
+        assert_eq!(phase, LoopPhaseSpawn::Day);
+        assert_eq!(min_loop, 1);
+    }
+
+    #[test]
+    fn test_loop_aware_spawn_temporal_parasite() {
+        let (phase, min_loop) = HostileType::TemporalParasite.loop_aware_spawn();
+        assert_eq!(phase, LoopPhaseSpawn::Any);
+        assert_eq!(min_loop, 2);
+    }
+
+    #[test]
+    fn test_loop_aware_spawn_chrono_spider() {
+        let (phase, min_loop) = HostileType::ChronoSpider.loop_aware_spawn();
+        assert_eq!(phase, LoopPhaseSpawn::Midnight);
+        assert_eq!(min_loop, 1);
+    }
+
+    #[test]
+    fn test_can_spawn_time_wraith_correct_conditions() {
+        assert!(HostileType::TimeWraith.can_spawn(LoopPhaseSpawn::Midnight, 3));
+        assert!(HostileType::TimeWraith.can_spawn(LoopPhaseSpawn::Midnight, 10));
+    }
+
+    #[test]
+    fn test_can_spawn_time_wraith_wrong_phase() {
+        assert!(!HostileType::TimeWraith.can_spawn(LoopPhaseSpawn::Day, 5));
+        assert!(!HostileType::TimeWraith.can_spawn(LoopPhaseSpawn::Dawn, 3));
+    }
+
+    #[test]
+    fn test_can_spawn_time_wraith_insufficient_loop() {
+        assert!(!HostileType::TimeWraith.can_spawn(LoopPhaseSpawn::Midnight, 1));
+        assert!(!HostileType::TimeWraith.can_spawn(LoopPhaseSpawn::Midnight, 2));
+    }
+
+    #[test]
+    fn test_can_spawn_temporal_parasite_any_phase() {
+        assert!(HostileType::TemporalParasite.can_spawn(LoopPhaseSpawn::Dawn, 2));
+        assert!(HostileType::TemporalParasite.can_spawn(LoopPhaseSpawn::Day, 2));
+        assert!(HostileType::TemporalParasite.can_spawn(LoopPhaseSpawn::Dusk, 2));
+        assert!(HostileType::TemporalParasite.can_spawn(LoopPhaseSpawn::Night, 2));
+        assert!(HostileType::TemporalParasite.can_spawn(LoopPhaseSpawn::Midnight, 2));
+    }
+
+    #[test]
+    fn test_can_spawn_temporal_parasite_insufficient_loop() {
+        assert!(!HostileType::TemporalParasite.can_spawn(LoopPhaseSpawn::Any, 1));
+    }
+
+    #[test]
+    fn test_can_spawn_echo_beast_any_loop() {
+        assert!(HostileType::EchoBeast.can_spawn(LoopPhaseSpawn::Day, 1));
+        assert!(HostileType::EchoBeast.can_spawn(LoopPhaseSpawn::Day, 100));
+    }
+
+    #[test]
+    fn test_can_spawn_loop_stalker() {
+        assert!(!HostileType::LoopStalker.can_spawn(LoopPhaseSpawn::Dusk, 4));
+        assert!(HostileType::LoopStalker.can_spawn(LoopPhaseSpawn::Dusk, 5));
+        assert!(HostileType::LoopStalker.can_spawn(LoopPhaseSpawn::Dusk, 10));
+    }
+
+    #[test]
+    fn test_can_spawn_chrono_spider() {
+        assert!(HostileType::ChronoSpider.can_spawn(LoopPhaseSpawn::Midnight, 1));
+        assert!(!HostileType::ChronoSpider.can_spawn(LoopPhaseSpawn::Day, 1));
     }
 }

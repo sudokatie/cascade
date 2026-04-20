@@ -58,16 +58,50 @@ impl LoopManager {
         self.mechanics.difficulty_modifier()
     }
 
+    /// Get the difficulty scaling based on current loop number.
+    ///
+    /// - Loops 1-5: returns 1.0 (normal difficulty)
+    /// - Loops 6-15: returns 1.5 (increased difficulty)
+    /// - Loops 16+: returns 2.0 (maximum difficulty)
+    #[must_use]
+    pub fn difficulty_scaling(&self) -> f32 {
+        let loop_num = self.current_loop();
+        if loop_num <= 5 {
+            1.0
+        } else if loop_num <= 15 {
+            1.5
+        } else {
+            2.0
+        }
+    }
+
+    /// Attempt to break the time loop using temporal keys.
+    ///
+    /// Requires exactly 3 temporal keys to succeed.
+    /// Returns true if the loop was successfully broken.
+    #[must_use]
+    pub fn loop_break_sequence(&mut self, temporal_keys: u32) -> bool {
+        if temporal_keys >= 3 {
+            self.break_loop();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Handle player death - reset loop and manage persistence.
     ///
-    /// Returns the new loop count.
+    /// Returns the new loop count with smooth difficulty transition.
     pub fn on_death(&mut self) -> u32 {
         // Reset volatile state
         self.persistence.reset_volatile();
         // Mark semi-persistent for regeneration
         self.persistence.regenerate_semi();
-        // Reset the loop
-        self.mechanics.trigger_death_reset()
+        // Reset the loop with smooth difficulty transition
+        let new_loop = self.mechanics.trigger_death_reset();
+        // Apply smooth difficulty scaling (mechanics handles the base,
+        // difficulty_scaling() provides the multiplier)
+        new_loop
     }
 
     /// Handle midnight timeout - same as death reset.
@@ -186,5 +220,121 @@ mod tests {
         let mut manager = LoopManager::new();
         manager.persistence_mut().save_persistent(&[1, 2, 3]);
         assert_eq!(manager.persistence().load_persistent(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_difficulty_scaling_early_loops() {
+        let manager = LoopManager::new();
+        assert!((manager.difficulty_scaling() - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_difficulty_scaling_loop_5() {
+        let mut manager = LoopManager::new();
+        for _ in 0..4 {
+            manager.on_death();
+        }
+        assert_eq!(manager.current_loop(), 5);
+        assert!((manager.difficulty_scaling() - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_difficulty_scaling_loop_6() {
+        let mut manager = LoopManager::new();
+        for _ in 0..5 {
+            manager.on_death();
+        }
+        assert_eq!(manager.current_loop(), 6);
+        assert!((manager.difficulty_scaling() - 1.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_difficulty_scaling_loop_15() {
+        let mut manager = LoopManager::new();
+        for _ in 0..14 {
+            manager.on_death();
+        }
+        assert_eq!(manager.current_loop(), 15);
+        assert!((manager.difficulty_scaling() - 1.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_difficulty_scaling_loop_16() {
+        let mut manager = LoopManager::new();
+        for _ in 0..15 {
+            manager.on_death();
+        }
+        assert_eq!(manager.current_loop(), 16);
+        assert!((manager.difficulty_scaling() - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_difficulty_scaling_high_loop() {
+        let mut manager = LoopManager::new();
+        for _ in 0..99 {
+            manager.on_death();
+        }
+        assert_eq!(manager.current_loop(), 100);
+        assert!((manager.difficulty_scaling() - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_loop_break_sequence_with_3_keys() {
+        let mut manager = LoopManager::new();
+        manager.on_death();
+        manager.on_death();
+        assert_eq!(manager.current_loop(), 3);
+
+        let result = manager.loop_break_sequence(3);
+        assert!(result);
+        assert_eq!(manager.current_loop(), 0);
+    }
+
+    #[test]
+    fn test_loop_break_sequence_with_more_keys() {
+        let mut manager = LoopManager::new();
+        let result = manager.loop_break_sequence(5);
+        assert!(result);
+        assert_eq!(manager.current_loop(), 0);
+    }
+
+    #[test]
+    fn test_loop_break_sequence_insufficient_keys() {
+        let mut manager = LoopManager::new();
+        manager.on_death();
+        assert_eq!(manager.current_loop(), 2);
+
+        let result = manager.loop_break_sequence(2);
+        assert!(!result);
+        assert_eq!(manager.current_loop(), 2);
+    }
+
+    #[test]
+    fn test_loop_break_sequence_zero_keys() {
+        let mut manager = LoopManager::new();
+        let result = manager.loop_break_sequence(0);
+        assert!(!result);
+        assert_eq!(manager.current_loop(), 1);
+    }
+
+    #[test]
+    fn test_on_death_returns_incremented_loop() {
+        let mut manager = LoopManager::new();
+        assert_eq!(manager.current_loop(), 1);
+
+        let new_loop = manager.on_death();
+        assert_eq!(new_loop, 2);
+        assert_eq!(manager.current_loop(), 2);
+    }
+
+    #[test]
+    fn test_on_death_smooth_transition() {
+        let mut manager = LoopManager::new();
+        // Progress through multiple deaths
+        for i in 1..=10 {
+            let new_loop = manager.on_death();
+            assert_eq!(new_loop, i + 1);
+        }
+        assert_eq!(manager.current_loop(), 11);
     }
 }

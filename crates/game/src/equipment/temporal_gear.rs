@@ -85,6 +85,43 @@ impl TemporalGear {
             TemporalGear::ChronoBoots,
         ]
     }
+
+    /// Get loop-based bonus multiplier for this gear type.
+    ///
+    /// Returns a bonus multiplier based on the current loop number:
+    /// - ChronoBoots: 1.0 + 0.2 * min(loop, 5) (speed scaling)
+    /// - LoopWatch: 1.0 (no bonus)
+    /// - MemoryLens: 1.1 if loop > 3, else 1.0
+    /// - ParadoxScanner: 1.0 + 0.05 * min(loop, 5) (up to 25%)
+    /// - TemporalAnchor: 1.15 (flat bonus)
+    #[must_use]
+    pub fn loop_based_bonus(&self, current_loop: u32) -> f32 {
+        match self {
+            TemporalGear::ChronoBoots => {
+                let loop_factor = current_loop.min(5) as f32;
+                1.0 + 0.2 * loop_factor
+            }
+            TemporalGear::LoopWatch => 1.0,
+            TemporalGear::MemoryLens => {
+                if current_loop > 3 {
+                    1.1
+                } else {
+                    1.0
+                }
+            }
+            TemporalGear::ParadoxScanner => {
+                let loop_factor = current_loop.min(5) as f32;
+                1.0 + 0.05 * loop_factor
+            }
+            TemporalGear::TemporalAnchor => 1.15,
+        }
+    }
+
+    /// Get the durability degradation rate per use.
+    #[must_use]
+    pub fn durability_per_use(&self) -> f32 {
+        0.5
+    }
 }
 
 /// An instance of temporal equipment.
@@ -92,8 +129,8 @@ impl TemporalGear {
 pub struct TemporalEquipment {
     /// The type of gear.
     gear: TemporalGear,
-    /// Current durability (0-100).
-    durability: u32,
+    /// Current durability (0.0-100.0).
+    durability: f32,
     /// Loop bonus multiplier.
     loop_bonus: f32,
     /// Whether the equipment is currently active.
@@ -108,7 +145,7 @@ impl TemporalEquipment {
     pub fn new(gear: TemporalGear) -> Self {
         Self {
             gear,
-            durability: 100,
+            durability: 100.0,
             loop_bonus: gear.loop_bonus(),
             active: false,
             charges: 10,
@@ -121,9 +158,15 @@ impl TemporalEquipment {
         self.gear
     }
 
-    /// Get current durability.
+    /// Get current durability as integer (truncated).
     #[must_use]
     pub fn durability(&self) -> u32 {
+        self.durability as u32
+    }
+
+    /// Get current durability as float.
+    #[must_use]
+    pub fn durability_f32(&self) -> f32 {
         self.durability
     }
 
@@ -148,7 +191,7 @@ impl TemporalEquipment {
     /// Check if the equipment is broken.
     #[must_use]
     pub fn is_broken(&self) -> bool {
-        self.durability == 0
+        self.durability <= 0.0
     }
 
     /// Apply the equipment's effect.
@@ -171,14 +214,14 @@ impl TemporalEquipment {
         }
     }
 
-    /// Use the equipment, consuming durability and a charge.
+    /// Use the equipment, consuming durability (0.5 per use) and a charge.
     ///
     /// Returns true if successfully used.
     pub fn use_equipment(&mut self) -> bool {
         if self.is_broken() || self.charges == 0 {
             return false;
         }
-        self.durability = self.durability.saturating_sub(1);
+        self.durability = (self.durability - self.gear.durability_per_use()).max(0.0);
         self.charges = self.charges.saturating_sub(1);
         self.active = true;
         true
@@ -198,7 +241,7 @@ impl TemporalEquipment {
 
     /// Repair the equipment.
     pub fn repair(&mut self, amount: u32) {
-        self.durability = (self.durability + amount).min(100);
+        self.durability = (self.durability + amount as f32).min(100.0);
     }
 
     /// Recharge the equipment.
@@ -208,8 +251,8 @@ impl TemporalEquipment {
 
     /// Reduce durability by a specific amount.
     pub fn degrade(&mut self, amount: u32) {
-        self.durability = self.durability.saturating_sub(amount);
-        if self.durability == 0 {
+        self.durability = (self.durability - amount as f32).max(0.0);
+        if self.durability <= 0.0 {
             self.active = false;
         }
     }
@@ -217,7 +260,17 @@ impl TemporalEquipment {
     /// Get effectiveness based on durability.
     #[must_use]
     pub fn effectiveness(&self) -> f32 {
-        self.durability as f32 / 100.0
+        self.durability / 100.0
+    }
+
+    /// Get loop-based bonus for this equipment at the given loop.
+    #[must_use]
+    pub fn get_loop_bonus(&self, current_loop: u32) -> f32 {
+        if self.is_broken() {
+            1.0
+        } else {
+            self.gear.loop_based_bonus(current_loop) * self.effectiveness()
+        }
     }
 
     /// Calculate actual loop bonus considering durability.
@@ -428,5 +481,114 @@ mod tests {
         equip.degrade(100);
         equip.activate();
         assert!(!equip.is_active());
+    }
+
+    #[test]
+    fn test_loop_based_bonus_chrono_boots() {
+        // ChronoBoots: 1.0 + 0.2 * min(loop, 5)
+        assert!((TemporalGear::ChronoBoots.loop_based_bonus(1) - 1.2).abs() < f32::EPSILON);
+        assert!((TemporalGear::ChronoBoots.loop_based_bonus(3) - 1.6).abs() < f32::EPSILON);
+        assert!((TemporalGear::ChronoBoots.loop_based_bonus(5) - 2.0).abs() < f32::EPSILON);
+        assert!((TemporalGear::ChronoBoots.loop_based_bonus(10) - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_loop_based_bonus_loop_watch() {
+        // LoopWatch: always 1.0
+        assert!((TemporalGear::LoopWatch.loop_based_bonus(1) - 1.0).abs() < f32::EPSILON);
+        assert!((TemporalGear::LoopWatch.loop_based_bonus(5) - 1.0).abs() < f32::EPSILON);
+        assert!((TemporalGear::LoopWatch.loop_based_bonus(100) - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_loop_based_bonus_memory_lens() {
+        // MemoryLens: 1.1 if loop > 3, else 1.0
+        assert!((TemporalGear::MemoryLens.loop_based_bonus(1) - 1.0).abs() < f32::EPSILON);
+        assert!((TemporalGear::MemoryLens.loop_based_bonus(3) - 1.0).abs() < f32::EPSILON);
+        assert!((TemporalGear::MemoryLens.loop_based_bonus(4) - 1.1).abs() < f32::EPSILON);
+        assert!((TemporalGear::MemoryLens.loop_based_bonus(10) - 1.1).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_loop_based_bonus_paradox_scanner() {
+        // ParadoxScanner: 1.0 + 0.05 * min(loop, 5)
+        assert!((TemporalGear::ParadoxScanner.loop_based_bonus(1) - 1.05).abs() < f32::EPSILON);
+        assert!((TemporalGear::ParadoxScanner.loop_based_bonus(3) - 1.15).abs() < f32::EPSILON);
+        assert!((TemporalGear::ParadoxScanner.loop_based_bonus(5) - 1.25).abs() < f32::EPSILON);
+        assert!((TemporalGear::ParadoxScanner.loop_based_bonus(10) - 1.25).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_loop_based_bonus_temporal_anchor() {
+        // TemporalAnchor: flat 1.15
+        assert!((TemporalGear::TemporalAnchor.loop_based_bonus(1) - 1.15).abs() < f32::EPSILON);
+        assert!((TemporalGear::TemporalAnchor.loop_based_bonus(5) - 1.15).abs() < f32::EPSILON);
+        assert!((TemporalGear::TemporalAnchor.loop_based_bonus(100) - 1.15).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_durability_per_use() {
+        for gear in TemporalGear::all() {
+            assert!((gear.durability_per_use() - 0.5).abs() < f32::EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_equipment_use_degrades_half_durability() {
+        let mut equip = TemporalEquipment::new(TemporalGear::ChronoBoots);
+        assert!((equip.durability_f32() - 100.0).abs() < f32::EPSILON);
+
+        equip.use_equipment();
+        assert!((equip.durability_f32() - 99.5).abs() < f32::EPSILON);
+
+        equip.use_equipment();
+        assert!((equip.durability_f32() - 99.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_equipment_durability_200_uses() {
+        let mut equip = TemporalEquipment::new(TemporalGear::LoopWatch);
+        // With 0.5 degradation per use, 200 uses should drain 100 durability
+        for _ in 0..10 {
+            equip.recharge(10);
+        }
+        for _ in 0..200 {
+            if equip.charges() == 0 {
+                equip.recharge(10);
+            }
+            equip.use_equipment();
+        }
+        assert!(equip.is_broken());
+    }
+
+    #[test]
+    fn test_equipment_get_loop_bonus() {
+        let equip = TemporalEquipment::new(TemporalGear::ChronoBoots);
+        // Full durability, loop 5: 2.0 * 1.0 = 2.0
+        assert!((equip.get_loop_bonus(5) - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_equipment_get_loop_bonus_degraded() {
+        let mut equip = TemporalEquipment::new(TemporalGear::ChronoBoots);
+        equip.degrade(50);
+        // 50% durability, loop 5: 2.0 * 0.5 = 1.0
+        assert!((equip.get_loop_bonus(5) - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_equipment_get_loop_bonus_broken() {
+        let mut equip = TemporalEquipment::new(TemporalGear::ChronoBoots);
+        equip.degrade(100);
+        // Broken equipment returns 1.0
+        assert!((equip.get_loop_bonus(5) - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_durability_f32_accessor() {
+        let mut equip = TemporalEquipment::new(TemporalGear::MemoryLens);
+        equip.use_equipment();
+        assert!((equip.durability_f32() - 99.5).abs() < f32::EPSILON);
+        assert_eq!(equip.durability(), 99); // truncated
     }
 }

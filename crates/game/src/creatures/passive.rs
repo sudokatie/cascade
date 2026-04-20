@@ -4,6 +4,44 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Time phase for passive creature spawning.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PassiveLoopPhase {
+    /// Spawns during dawn.
+    Dawn,
+    /// Spawns during day.
+    Day,
+    /// Spawns during dusk.
+    Dusk,
+    /// Spawns during night.
+    Night,
+    /// Spawns at any phase.
+    Any,
+}
+
+/// Loop number parity for spawn conditions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LoopParity {
+    /// Spawns on even-numbered loops.
+    Even,
+    /// Spawns on odd-numbered loops.
+    Odd,
+    /// Spawns on any loop number.
+    Any,
+}
+
+impl LoopParity {
+    /// Check if a loop number matches this parity.
+    #[must_use]
+    pub fn matches(&self, loop_number: u32) -> bool {
+        match self {
+            LoopParity::Even => loop_number % 2 == 0,
+            LoopParity::Odd => loop_number % 2 == 1,
+            LoopParity::Any => true,
+        }
+    }
+}
+
 /// Spawn condition for passive creatures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PassiveSpawnCondition {
@@ -139,6 +177,35 @@ impl PassiveType {
             PassiveType::PhaseDeer,
             PassiveType::AnchorTurtle,
         ]
+    }
+
+    /// Get loop-aware spawn condition as (LoopPhase, LoopParity).
+    ///
+    /// Returns the phase when this creature spawns and the loop parity requirement.
+    /// - MemoryMoth: (Dawn, Any)
+    /// - LoopFish: (Day, Even)
+    /// - EchoRabbit: (Day, Any)
+    /// - PhaseDeer: (Dusk, Odd)
+    /// - AnchorTurtle: (Any, Any)
+    #[must_use]
+    pub fn loop_spawn_condition(&self) -> (PassiveLoopPhase, LoopParity) {
+        match self {
+            PassiveType::MemoryMoth => (PassiveLoopPhase::Dawn, LoopParity::Any),
+            PassiveType::LoopFish => (PassiveLoopPhase::Day, LoopParity::Even),
+            PassiveType::EchoRabbit => (PassiveLoopPhase::Day, LoopParity::Any),
+            PassiveType::PhaseDeer => (PassiveLoopPhase::Dusk, LoopParity::Odd),
+            PassiveType::AnchorTurtle => (PassiveLoopPhase::Any, LoopParity::Any),
+        }
+    }
+
+    /// Check if this creature can spawn given the current phase and loop number.
+    #[must_use]
+    pub fn can_spawn_at(&self, current_phase: PassiveLoopPhase, current_loop: u32) -> bool {
+        let (required_phase, parity) = self.loop_spawn_condition();
+        let phase_matches =
+            required_phase == PassiveLoopPhase::Any || required_phase == current_phase;
+        let parity_matches = parity.matches(current_loop);
+        phase_matches && parity_matches
     }
 }
 
@@ -546,5 +613,98 @@ mod tests {
         let cond = PassiveType::AnchorTurtle.spawn_condition();
         assert!(!cond.even_loops_only);
         assert_eq!(cond.min_loop, 1);
+    }
+
+    #[test]
+    fn test_loop_parity_even() {
+        assert!(LoopParity::Even.matches(2));
+        assert!(LoopParity::Even.matches(4));
+        assert!(LoopParity::Even.matches(100));
+        assert!(!LoopParity::Even.matches(1));
+        assert!(!LoopParity::Even.matches(3));
+    }
+
+    #[test]
+    fn test_loop_parity_odd() {
+        assert!(LoopParity::Odd.matches(1));
+        assert!(LoopParity::Odd.matches(3));
+        assert!(LoopParity::Odd.matches(99));
+        assert!(!LoopParity::Odd.matches(2));
+        assert!(!LoopParity::Odd.matches(4));
+    }
+
+    #[test]
+    fn test_loop_parity_any() {
+        assert!(LoopParity::Any.matches(1));
+        assert!(LoopParity::Any.matches(2));
+        assert!(LoopParity::Any.matches(100));
+    }
+
+    #[test]
+    fn test_loop_spawn_condition_memory_moth() {
+        let (phase, parity) = PassiveType::MemoryMoth.loop_spawn_condition();
+        assert_eq!(phase, PassiveLoopPhase::Dawn);
+        assert_eq!(parity, LoopParity::Any);
+    }
+
+    #[test]
+    fn test_loop_spawn_condition_loop_fish() {
+        let (phase, parity) = PassiveType::LoopFish.loop_spawn_condition();
+        assert_eq!(phase, PassiveLoopPhase::Day);
+        assert_eq!(parity, LoopParity::Even);
+    }
+
+    #[test]
+    fn test_loop_spawn_condition_echo_rabbit() {
+        let (phase, parity) = PassiveType::EchoRabbit.loop_spawn_condition();
+        assert_eq!(phase, PassiveLoopPhase::Day);
+        assert_eq!(parity, LoopParity::Any);
+    }
+
+    #[test]
+    fn test_loop_spawn_condition_phase_deer() {
+        let (phase, parity) = PassiveType::PhaseDeer.loop_spawn_condition();
+        assert_eq!(phase, PassiveLoopPhase::Dusk);
+        assert_eq!(parity, LoopParity::Odd);
+    }
+
+    #[test]
+    fn test_loop_spawn_condition_anchor_turtle() {
+        let (phase, parity) = PassiveType::AnchorTurtle.loop_spawn_condition();
+        assert_eq!(phase, PassiveLoopPhase::Any);
+        assert_eq!(parity, LoopParity::Any);
+    }
+
+    #[test]
+    fn test_can_spawn_at_memory_moth() {
+        assert!(PassiveType::MemoryMoth.can_spawn_at(PassiveLoopPhase::Dawn, 1));
+        assert!(PassiveType::MemoryMoth.can_spawn_at(PassiveLoopPhase::Dawn, 2));
+        assert!(!PassiveType::MemoryMoth.can_spawn_at(PassiveLoopPhase::Day, 1));
+    }
+
+    #[test]
+    fn test_can_spawn_at_loop_fish() {
+        assert!(PassiveType::LoopFish.can_spawn_at(PassiveLoopPhase::Day, 2));
+        assert!(PassiveType::LoopFish.can_spawn_at(PassiveLoopPhase::Day, 4));
+        assert!(!PassiveType::LoopFish.can_spawn_at(PassiveLoopPhase::Day, 1));
+        assert!(!PassiveType::LoopFish.can_spawn_at(PassiveLoopPhase::Day, 3));
+        assert!(!PassiveType::LoopFish.can_spawn_at(PassiveLoopPhase::Dawn, 2));
+    }
+
+    #[test]
+    fn test_can_spawn_at_phase_deer() {
+        assert!(PassiveType::PhaseDeer.can_spawn_at(PassiveLoopPhase::Dusk, 1));
+        assert!(PassiveType::PhaseDeer.can_spawn_at(PassiveLoopPhase::Dusk, 3));
+        assert!(!PassiveType::PhaseDeer.can_spawn_at(PassiveLoopPhase::Dusk, 2));
+        assert!(!PassiveType::PhaseDeer.can_spawn_at(PassiveLoopPhase::Day, 1));
+    }
+
+    #[test]
+    fn test_can_spawn_at_anchor_turtle_any() {
+        assert!(PassiveType::AnchorTurtle.can_spawn_at(PassiveLoopPhase::Dawn, 1));
+        assert!(PassiveType::AnchorTurtle.can_spawn_at(PassiveLoopPhase::Day, 2));
+        assert!(PassiveType::AnchorTurtle.can_spawn_at(PassiveLoopPhase::Dusk, 3));
+        assert!(PassiveType::AnchorTurtle.can_spawn_at(PassiveLoopPhase::Night, 4));
+        assert!(PassiveType::AnchorTurtle.can_spawn_at(PassiveLoopPhase::Any, 100));
     }
 }

@@ -9,7 +9,7 @@ pub use hostile::{
     AbilityResult, HostileCreature, HostileSpawnCondition, HostileType, LoopPhaseSpawn,
     SpecialAbilityInfo,
 };
-pub use passive::{PassiveCreature, PassiveSpawnCondition, PassiveType};
+pub use passive::{LoopParity, PassiveCreature, PassiveLoopPhase, PassiveSpawnCondition, PassiveType};
 
 /// Time of day for creature spawning (re-exported for compatibility).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

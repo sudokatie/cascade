@@ -2,9 +2,9 @@
 //!
 //! Tests core functionality across multiple systems.
 
-use fracture_game::crafting::{CraftingStation, Recipe};
-use fracture_game::inventory::{Inventory, ItemId, ItemStack};
-use fracture_game::survival::{DamageSource, Health, Hunger};
+use cascade_game::crafting::{CraftingStation, Recipe};
+use cascade_game::inventory::{Inventory, ItemId, ItemStack};
+use cascade_game::survival::{DamageSource, Health, Hunger};
 
 /// Test inventory operations.
 mod inventory_tests {
