@@ -1,78 +1,58 @@
-//! Hostile creature types for Titan survival.
+//! Hostile creature types for time-loop survival.
 //!
-//! Hostile creatures that infest the Titan's body and attack players.
+//! Loop-aware hostile creatures that become more dangerous as loops progress.
 
+use glam::IVec3;
 use serde::{Deserialize, Serialize};
 
-use crate::titan::{TitanMood, TitanZone};
-
-/// Time of day preference for creature spawning.
+/// Time phase for creature spawning.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum TimeOfDay {
+pub enum LoopPhaseSpawn {
+    /// Spawns during dawn.
+    Dawn,
     /// Spawns during day.
     Day,
-    /// Spawns during night.
-    Night,
-    /// Spawns at any time.
+    /// Spawns during dusk.
+    Dusk,
+    /// Spawns during midnight.
+    Midnight,
+    /// Spawns at any phase.
     Any,
-}
-
-/// Mood requirement for hostile creature spawning.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MoodRequirement {
-    /// Spawns in any mood.
-    Any,
-    /// Spawns only when Agitated or Enraged.
-    AgitatedOrEnraged,
-    /// Spawns only when Enraged.
-    EnragedOnly,
-}
-
-impl MoodRequirement {
-    /// Check if the given mood satisfies this requirement.
-    #[must_use]
-    pub fn is_satisfied(&self, mood: TitanMood) -> bool {
-        match self {
-            MoodRequirement::Any => true,
-            MoodRequirement::AgitatedOrEnraged => {
-                matches!(mood, TitanMood::Agitated | TitanMood::Enraged)
-            }
-            MoodRequirement::EnragedOnly => matches!(mood, TitanMood::Enraged),
-        }
-    }
 }
 
 /// Spawn condition for hostile creatures.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HostileSpawnCondition {
-    /// Zone where the creature spawns.
-    pub zone: TitanZone,
-    /// Mood requirement for spawning.
-    pub mood: MoodRequirement,
+    /// Loop phase for spawning.
+    pub phase: LoopPhaseSpawn,
+    /// Minimum loop count for spawning.
+    pub min_loop: u32,
 }
 
-/// Special ability info with name and damage multiplier.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// Special ability info with name and effect description.
+#[derive(Clone, Debug, PartialEq)]
 pub struct SpecialAbilityInfo {
     /// Name of the ability.
     pub name: &'static str,
-    /// Damage multiplier for the ability.
-    pub damage_multiplier: f32,
+    /// Description of the effect.
+    pub description: &'static str,
+    /// Base effect value.
+    pub effect_value: f32,
 }
 
-/// Types of hostile creatures on the Titan.
+/// Types of hostile creatures in the time loop.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum HostileType {
-    /// Small tick that feeds on scales and drains Titan HP.
-    ScaleTick,
-    /// Borer that tunnels through shell, creating unstable ground.
-    ShellBorer,
-    /// Leech that drains blood and causes DOT to nearby players.
-    BloodLeech,
-    /// Wasp that affects neural tissue, swarms near nodes.
-    NeuralWasp,
-    /// Large crawler in the mouth that can devour low-balance players.
-    MouthCrawler,
+    /// Ghostly entity that feeds on temporal energy.
+    TimeWraith,
+    /// Predator that tracks players across loop iterations.
+    LoopStalker,
+    /// Beast whose attacks grow stronger with each death at the same location.
+    EchoBeast,
+    /// Creature that feeds on temporal anomalies.
+    TemporalParasite,
+    /// Spider that weaves time-binding webs.
+    ChronoSpider,
 }
 
 impl HostileType {
@@ -80,11 +60,11 @@ impl HostileType {
     #[must_use]
     pub fn base_hp(&self) -> u32 {
         match self {
-            HostileType::ScaleTick => 40,
-            HostileType::ShellBorer => 80,
-            HostileType::BloodLeech => 30,
-            HostileType::NeuralWasp => 50,
-            HostileType::MouthCrawler => 200,
+            HostileType::TimeWraith => 60,
+            HostileType::LoopStalker => 80,
+            HostileType::EchoBeast => 100,
+            HostileType::TemporalParasite => 40,
+            HostileType::ChronoSpider => 50,
         }
     }
 
@@ -92,11 +72,11 @@ impl HostileType {
     #[must_use]
     pub fn base_damage(&self) -> u32 {
         match self {
-            HostileType::ScaleTick => 5,
-            HostileType::ShellBorer => 10,
-            HostileType::BloodLeech => 8,
-            HostileType::NeuralWasp => 15,
-            HostileType::MouthCrawler => 25,
+            HostileType::TimeWraith => 12,
+            HostileType::LoopStalker => 15,
+            HostileType::EchoBeast => 20,
+            HostileType::TemporalParasite => 8,
+            HostileType::ChronoSpider => 10,
         }
     }
 
@@ -104,11 +84,11 @@ impl HostileType {
     #[must_use]
     pub fn base_speed(&self) -> f32 {
         match self {
-            HostileType::ScaleTick => 0.5,
-            HostileType::ShellBorer => 0.8,
-            HostileType::BloodLeech => 1.2,
-            HostileType::NeuralWasp => 1.5,
-            HostileType::MouthCrawler => 1.0,
+            HostileType::TimeWraith => 1.0,
+            HostileType::LoopStalker => 1.3,
+            HostileType::EchoBeast => 0.8,
+            HostileType::TemporalParasite => 1.5,
+            HostileType::ChronoSpider => 1.2,
         }
     }
 
@@ -116,37 +96,42 @@ impl HostileType {
     #[must_use]
     pub fn special_ability_name(&self) -> &'static str {
         match self {
-            HostileType::ScaleTick => "drain",
-            HostileType::ShellBorer => "tunnel",
-            HostileType::BloodLeech => "bleed",
-            HostileType::NeuralWasp => "swarm",
-            HostileType::MouthCrawler => "devour",
+            HostileType::TimeWraith => "chronal_drain",
+            HostileType::LoopStalker => "deja_vu",
+            HostileType::EchoBeast => "resonance",
+            HostileType::TemporalParasite => "phase",
+            HostileType::ChronoSpider => "snare",
         }
     }
 
-    /// Get the special ability info including name and damage multiplier.
+    /// Get the special ability info including name, description, and effect value.
     #[must_use]
     pub fn special_ability(&self) -> SpecialAbilityInfo {
         match self {
-            HostileType::ScaleTick => SpecialAbilityInfo {
-                name: "drain",
-                damage_multiplier: 1.0,
+            HostileType::TimeWraith => SpecialAbilityInfo {
+                name: "chronal_drain",
+                description: "Reduces the player's loop counter by 1",
+                effect_value: 1.0,
             },
-            HostileType::ShellBorer => SpecialAbilityInfo {
-                name: "tunnel",
-                damage_multiplier: 1.5,
+            HostileType::LoopStalker => SpecialAbilityInfo {
+                name: "deja_vu",
+                description: "Player cannot move for 1 tick",
+                effect_value: 1.0,
             },
-            HostileType::BloodLeech => SpecialAbilityInfo {
-                name: "bleed",
-                damage_multiplier: 0.5,
+            HostileType::EchoBeast => SpecialAbilityInfo {
+                name: "resonance",
+                description: "Damage increases per death at same location",
+                effect_value: 1.5,
             },
-            HostileType::NeuralWasp => SpecialAbilityInfo {
-                name: "swarm",
-                damage_multiplier: 3.0,
+            HostileType::TemporalParasite => SpecialAbilityInfo {
+                name: "phase",
+                description: "Teleports to nearest temporal chest",
+                effect_value: 0.0,
             },
-            HostileType::MouthCrawler => SpecialAbilityInfo {
-                name: "devour",
-                damage_multiplier: 40.0,
+            HostileType::ChronoSpider => SpecialAbilityInfo {
+                name: "snare",
+                description: "Immobilizes target, damage scales with loop count",
+                effect_value: 0.1,
             },
         }
     }
@@ -155,25 +140,25 @@ impl HostileType {
     #[must_use]
     pub fn spawn_condition(&self) -> HostileSpawnCondition {
         match self {
-            HostileType::ScaleTick => HostileSpawnCondition {
-                zone: TitanZone::ScaleValley,
-                mood: MoodRequirement::Any,
+            HostileType::TimeWraith => HostileSpawnCondition {
+                phase: LoopPhaseSpawn::Midnight,
+                min_loop: 1,
             },
-            HostileType::ShellBorer => HostileSpawnCondition {
-                zone: TitanZone::ShellRidge,
-                mood: MoodRequirement::AgitatedOrEnraged,
+            HostileType::LoopStalker => HostileSpawnCondition {
+                phase: LoopPhaseSpawn::Any,
+                min_loop: 3,
             },
-            HostileType::BloodLeech => HostileSpawnCondition {
-                zone: TitanZone::WoundSite,
-                mood: MoodRequirement::Any,
+            HostileType::EchoBeast => HostileSpawnCondition {
+                phase: LoopPhaseSpawn::Dusk,
+                min_loop: 2,
             },
-            HostileType::NeuralWasp => HostileSpawnCondition {
-                zone: TitanZone::NeuralNode,
-                mood: MoodRequirement::EnragedOnly,
+            HostileType::TemporalParasite => HostileSpawnCondition {
+                phase: LoopPhaseSpawn::Any,
+                min_loop: 1,
             },
-            HostileType::MouthCrawler => HostileSpawnCondition {
-                zone: TitanZone::BreathingVent,
-                mood: MoodRequirement::EnragedOnly,
+            HostileType::ChronoSpider => HostileSpawnCondition {
+                phase: LoopPhaseSpawn::Day,
+                min_loop: 1,
             },
         }
     }
@@ -182,12 +167,24 @@ impl HostileType {
     #[must_use]
     pub fn display_name(&self) -> &'static str {
         match self {
-            HostileType::ScaleTick => "Scale Tick",
-            HostileType::ShellBorer => "Shell Borer",
-            HostileType::BloodLeech => "Blood Leech",
-            HostileType::NeuralWasp => "Neural Wasp",
-            HostileType::MouthCrawler => "Mouth Crawler",
+            HostileType::TimeWraith => "Time Wraith",
+            HostileType::LoopStalker => "Loop Stalker",
+            HostileType::EchoBeast => "Echo Beast",
+            HostileType::TemporalParasite => "Temporal Parasite",
+            HostileType::ChronoSpider => "Chrono Spider",
         }
+    }
+
+    /// Get all hostile types.
+    #[must_use]
+    pub fn all() -> &'static [HostileType] {
+        &[
+            HostileType::TimeWraith,
+            HostileType::LoopStalker,
+            HostileType::EchoBeast,
+            HostileType::TemporalParasite,
+            HostileType::ChronoSpider,
+        ]
     }
 }
 
@@ -198,8 +195,8 @@ pub struct AbilityResult {
     pub success: bool,
     /// Damage dealt by the ability.
     pub damage: u32,
-    /// Area of effect radius (0 for single target).
-    pub area_radius: f32,
+    /// Duration of any status effect in ticks.
+    pub effect_duration: u32,
     /// Description of the effect.
     pub effect: String,
 }
@@ -207,11 +204,11 @@ pub struct AbilityResult {
 impl AbilityResult {
     /// Create a new ability result.
     #[must_use]
-    pub fn new(success: bool, damage: u32, area_radius: f32, effect: String) -> Self {
+    pub fn new(success: bool, damage: u32, effect_duration: u32, effect: String) -> Self {
         Self {
             success,
             damage,
-            area_radius,
+            effect_duration,
             effect,
         }
     }
@@ -222,7 +219,7 @@ impl AbilityResult {
         Self {
             success: false,
             damage: 0,
-            area_radius: 0.0,
+            effect_duration: 0,
             effect: String::new(),
         }
     }
@@ -245,6 +242,10 @@ pub struct HostileCreature {
     special_ability: String,
     /// Whether the creature is active (not stunned/disabled).
     active: bool,
+    /// Current loop count (for scaling effects).
+    loop_count: u32,
+    /// Death count at current position (for EchoBeast).
+    death_resonance: u32,
 }
 
 impl HostileCreature {
@@ -260,7 +261,22 @@ impl HostileCreature {
             speed: creature_type.base_speed(),
             special_ability: creature_type.special_ability_name().to_string(),
             active: true,
+            loop_count: 1,
+            death_resonance: 0,
         }
+    }
+
+    /// Create a hostile creature with loop awareness.
+    #[must_use]
+    pub fn new_with_loop(creature_type: HostileType, loop_count: u32) -> Self {
+        let mut creature = Self::new(creature_type);
+        creature.loop_count = loop_count;
+        // Scale HP and damage with loop count
+        let scale = 1.0 + (loop_count.saturating_sub(1) as f32 * 0.1);
+        creature.max_hp = (creature.max_hp as f32 * scale) as u32;
+        creature.hp = creature.max_hp;
+        creature.damage = (creature.damage as f32 * scale) as u32;
+        creature
     }
 
     /// Get the creature type.
@@ -337,6 +353,17 @@ impl HostileCreature {
         }
     }
 
+    /// Register a player death at this creature's location (for EchoBeast).
+    pub fn register_death_at_location(&mut self) {
+        self.death_resonance += 1;
+    }
+
+    /// Get the death resonance count.
+    #[must_use]
+    pub fn death_resonance(&self) -> u32 {
+        self.death_resonance
+    }
+
     /// Use the creature's special ability.
     #[must_use]
     pub fn use_ability(&self) -> AbilityResult {
@@ -345,42 +372,82 @@ impl HostileCreature {
         }
 
         match self.creature_type {
-            HostileType::ScaleTick => AbilityResult::new(
+            HostileType::TimeWraith => AbilityResult::new(
                 true,
-                self.damage,
-                0.0,
-                "Drains HP from the Titan itself".to_string(),
+                0,
+                0,
+                "Drains temporal energy, reducing loop counter by 1".to_string(),
             ),
-            HostileType::ShellBorer => AbilityResult::new(
+            HostileType::LoopStalker => AbilityResult::new(
                 true,
-                self.damage + 5,
-                3.0,
-                "Tunnels through shell, creating unstable ground".to_string(),
+                0,
+                1,
+                "Deja vu effect: player cannot move for 1 tick".to_string(),
             ),
-            HostileType::BloodLeech => AbilityResult::new(
+            HostileType::EchoBeast => {
+                let resonance_damage =
+                    self.damage + (self.death_resonance * self.damage / 2);
+                AbilityResult::new(
+                    true,
+                    resonance_damage,
+                    0,
+                    format!(
+                        "Resonance strike with {} deaths at location, dealing {} damage",
+                        self.death_resonance, resonance_damage
+                    ),
+                )
+            }
+            HostileType::TemporalParasite => AbilityResult::new(
                 true,
-                self.damage / 2,
-                4.0,
-                "Causes bleeding DOT to nearby players".to_string(),
+                0,
+                0,
+                "Phases to nearest temporal chest location".to_string(),
             ),
-            HostileType::NeuralWasp => AbilityResult::new(
-                true,
-                self.damage * 3,
-                2.0,
-                "Swarms with 3x damage near neural nodes".to_string(),
-            ),
-            HostileType::MouthCrawler => AbilityResult::new(
-                true,
-                999,
-                0.0,
-                "Devours players with low balance instantly".to_string(),
-            ),
+            HostileType::ChronoSpider => {
+                let snare_damage = self.damage + (self.loop_count * 2);
+                AbilityResult::new(
+                    true,
+                    snare_damage,
+                    3,
+                    format!(
+                        "Snare immobilizes for 3 ticks, damage scales with loop count: {}",
+                        snare_damage
+                    ),
+                )
+            }
         }
+    }
+
+    /// Get target position for phase ability (TemporalParasite).
+    #[must_use]
+    pub fn get_phase_target(&self, chest_positions: &[IVec3], current_pos: IVec3) -> Option<IVec3> {
+        if self.creature_type != HostileType::TemporalParasite {
+            return None;
+        }
+
+        chest_positions
+            .iter()
+            .min_by_key(|pos| {
+                let diff = **pos - current_pos;
+                diff.x.abs() + diff.y.abs() + diff.z.abs()
+            })
+            .copied()
     }
 
     /// Heal the creature.
     pub fn heal(&mut self, amount: u32) {
         self.hp = (self.hp + amount).min(self.max_hp);
+    }
+
+    /// Update loop count (for scaling effects).
+    pub fn set_loop_count(&mut self, loop_count: u32) {
+        self.loop_count = loop_count;
+    }
+
+    /// Get current loop count.
+    #[must_use]
+    pub fn loop_count(&self) -> u32 {
+        self.loop_count
     }
 }
 
@@ -389,159 +456,167 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hostile_type_scale_tick_stats() {
-        assert_eq!(HostileType::ScaleTick.base_hp(), 40);
-        assert_eq!(HostileType::ScaleTick.base_damage(), 5);
-        assert!((HostileType::ScaleTick.base_speed() - 0.5).abs() < f32::EPSILON);
+    fn test_hostile_type_time_wraith_stats() {
+        assert_eq!(HostileType::TimeWraith.base_hp(), 60);
+        assert_eq!(HostileType::TimeWraith.base_damage(), 12);
+        assert!((HostileType::TimeWraith.base_speed() - 1.0).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn test_hostile_type_shell_borer_stats() {
-        assert_eq!(HostileType::ShellBorer.base_hp(), 80);
-        assert_eq!(HostileType::ShellBorer.base_damage(), 10);
-        assert!((HostileType::ShellBorer.base_speed() - 0.8).abs() < f32::EPSILON);
+    fn test_hostile_type_loop_stalker_stats() {
+        assert_eq!(HostileType::LoopStalker.base_hp(), 80);
+        assert_eq!(HostileType::LoopStalker.base_damage(), 15);
+        assert!((HostileType::LoopStalker.base_speed() - 1.3).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn test_hostile_type_blood_leech_stats() {
-        assert_eq!(HostileType::BloodLeech.base_hp(), 30);
-        assert_eq!(HostileType::BloodLeech.base_damage(), 8);
-        assert!((HostileType::BloodLeech.base_speed() - 1.2).abs() < f32::EPSILON);
+    fn test_hostile_type_echo_beast_stats() {
+        assert_eq!(HostileType::EchoBeast.base_hp(), 100);
+        assert_eq!(HostileType::EchoBeast.base_damage(), 20);
+        assert!((HostileType::EchoBeast.base_speed() - 0.8).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn test_hostile_type_neural_wasp_stats() {
-        assert_eq!(HostileType::NeuralWasp.base_hp(), 50);
-        assert_eq!(HostileType::NeuralWasp.base_damage(), 15);
-        assert!((HostileType::NeuralWasp.base_speed() - 1.5).abs() < f32::EPSILON);
+    fn test_hostile_type_temporal_parasite_stats() {
+        assert_eq!(HostileType::TemporalParasite.base_hp(), 40);
+        assert_eq!(HostileType::TemporalParasite.base_damage(), 8);
+        assert!((HostileType::TemporalParasite.base_speed() - 1.5).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn test_hostile_type_mouth_crawler_stats() {
-        assert_eq!(HostileType::MouthCrawler.base_hp(), 200);
-        assert_eq!(HostileType::MouthCrawler.base_damage(), 25);
-        assert!((HostileType::MouthCrawler.base_speed() - 1.0).abs() < f32::EPSILON);
+    fn test_hostile_type_chrono_spider_stats() {
+        assert_eq!(HostileType::ChronoSpider.base_hp(), 50);
+        assert_eq!(HostileType::ChronoSpider.base_damage(), 10);
+        assert!((HostileType::ChronoSpider.base_speed() - 1.2).abs() < f32::EPSILON);
     }
 
     #[test]
     fn test_hostile_type_special_ability_names() {
-        assert_eq!(HostileType::ScaleTick.special_ability_name(), "drain");
-        assert_eq!(HostileType::ShellBorer.special_ability_name(), "tunnel");
-        assert_eq!(HostileType::BloodLeech.special_ability_name(), "bleed");
-        assert_eq!(HostileType::NeuralWasp.special_ability_name(), "swarm");
-        assert_eq!(HostileType::MouthCrawler.special_ability_name(), "devour");
+        assert_eq!(HostileType::TimeWraith.special_ability_name(), "chronal_drain");
+        assert_eq!(HostileType::LoopStalker.special_ability_name(), "deja_vu");
+        assert_eq!(HostileType::EchoBeast.special_ability_name(), "resonance");
+        assert_eq!(HostileType::TemporalParasite.special_ability_name(), "phase");
+        assert_eq!(HostileType::ChronoSpider.special_ability_name(), "snare");
     }
 
     #[test]
     fn test_hostile_type_special_ability_info() {
-        let ability = HostileType::ScaleTick.special_ability();
-        assert_eq!(ability.name, "drain");
-        assert!((ability.damage_multiplier - 1.0).abs() < f32::EPSILON);
+        let ability = HostileType::TimeWraith.special_ability();
+        assert_eq!(ability.name, "chronal_drain");
+        assert!(ability.description.contains("loop counter"));
 
-        let ability = HostileType::NeuralWasp.special_ability();
-        assert_eq!(ability.name, "swarm");
-        assert!((ability.damage_multiplier - 3.0).abs() < f32::EPSILON);
+        let ability = HostileType::LoopStalker.special_ability();
+        assert_eq!(ability.name, "deja_vu");
+        assert!(ability.description.contains("cannot move"));
 
-        let ability = HostileType::MouthCrawler.special_ability();
-        assert_eq!(ability.name, "devour");
-        assert!((ability.damage_multiplier - 40.0).abs() < f32::EPSILON);
+        let ability = HostileType::EchoBeast.special_ability();
+        assert_eq!(ability.name, "resonance");
+        assert!(ability.description.contains("death"));
+
+        let ability = HostileType::TemporalParasite.special_ability();
+        assert_eq!(ability.name, "phase");
+        assert!(ability.description.contains("chest"));
+
+        let ability = HostileType::ChronoSpider.special_ability();
+        assert_eq!(ability.name, "snare");
+        assert!(ability.description.contains("loop count"));
     }
 
     #[test]
-    fn test_hostile_type_spawn_condition_scale_tick() {
-        let cond = HostileType::ScaleTick.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::ScaleValley);
-        assert_eq!(cond.mood, MoodRequirement::Any);
+    fn test_hostile_type_spawn_condition_time_wraith() {
+        let cond = HostileType::TimeWraith.spawn_condition();
+        assert_eq!(cond.phase, LoopPhaseSpawn::Midnight);
+        assert_eq!(cond.min_loop, 1);
     }
 
     #[test]
-    fn test_hostile_type_spawn_condition_shell_borer() {
-        let cond = HostileType::ShellBorer.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::ShellRidge);
-        assert_eq!(cond.mood, MoodRequirement::AgitatedOrEnraged);
+    fn test_hostile_type_spawn_condition_loop_stalker() {
+        let cond = HostileType::LoopStalker.spawn_condition();
+        assert_eq!(cond.phase, LoopPhaseSpawn::Any);
+        assert_eq!(cond.min_loop, 3);
     }
 
     #[test]
-    fn test_hostile_type_spawn_condition_blood_leech() {
-        let cond = HostileType::BloodLeech.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::WoundSite);
-        assert_eq!(cond.mood, MoodRequirement::Any);
+    fn test_hostile_type_spawn_condition_echo_beast() {
+        let cond = HostileType::EchoBeast.spawn_condition();
+        assert_eq!(cond.phase, LoopPhaseSpawn::Dusk);
+        assert_eq!(cond.min_loop, 2);
     }
 
     #[test]
-    fn test_hostile_type_spawn_condition_neural_wasp() {
-        let cond = HostileType::NeuralWasp.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::NeuralNode);
-        assert_eq!(cond.mood, MoodRequirement::EnragedOnly);
+    fn test_hostile_type_spawn_condition_temporal_parasite() {
+        let cond = HostileType::TemporalParasite.spawn_condition();
+        assert_eq!(cond.phase, LoopPhaseSpawn::Any);
+        assert_eq!(cond.min_loop, 1);
     }
 
     #[test]
-    fn test_hostile_type_spawn_condition_mouth_crawler() {
-        let cond = HostileType::MouthCrawler.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::BreathingVent);
-        assert_eq!(cond.mood, MoodRequirement::EnragedOnly);
-    }
-
-    #[test]
-    fn test_mood_requirement_any() {
-        let req = MoodRequirement::Any;
-        assert!(req.is_satisfied(TitanMood::Calm));
-        assert!(req.is_satisfied(TitanMood::Agitated));
-        assert!(req.is_satisfied(TitanMood::Enraged));
-    }
-
-    #[test]
-    fn test_mood_requirement_agitated_or_enraged() {
-        let req = MoodRequirement::AgitatedOrEnraged;
-        assert!(!req.is_satisfied(TitanMood::Calm));
-        assert!(req.is_satisfied(TitanMood::Agitated));
-        assert!(req.is_satisfied(TitanMood::Enraged));
-    }
-
-    #[test]
-    fn test_mood_requirement_enraged_only() {
-        let req = MoodRequirement::EnragedOnly;
-        assert!(!req.is_satisfied(TitanMood::Calm));
-        assert!(!req.is_satisfied(TitanMood::Agitated));
-        assert!(req.is_satisfied(TitanMood::Enraged));
+    fn test_hostile_type_spawn_condition_chrono_spider() {
+        let cond = HostileType::ChronoSpider.spawn_condition();
+        assert_eq!(cond.phase, LoopPhaseSpawn::Day);
+        assert_eq!(cond.min_loop, 1);
     }
 
     #[test]
     fn test_hostile_type_display_names() {
-        assert_eq!(HostileType::ScaleTick.display_name(), "Scale Tick");
-        assert_eq!(HostileType::ShellBorer.display_name(), "Shell Borer");
-        assert_eq!(HostileType::BloodLeech.display_name(), "Blood Leech");
-        assert_eq!(HostileType::NeuralWasp.display_name(), "Neural Wasp");
-        assert_eq!(HostileType::MouthCrawler.display_name(), "Mouth Crawler");
+        assert_eq!(HostileType::TimeWraith.display_name(), "Time Wraith");
+        assert_eq!(HostileType::LoopStalker.display_name(), "Loop Stalker");
+        assert_eq!(HostileType::EchoBeast.display_name(), "Echo Beast");
+        assert_eq!(HostileType::TemporalParasite.display_name(), "Temporal Parasite");
+        assert_eq!(HostileType::ChronoSpider.display_name(), "Chrono Spider");
+    }
+
+    #[test]
+    fn test_hostile_type_all() {
+        let all = HostileType::all();
+        assert_eq!(all.len(), 5);
+        assert!(all.contains(&HostileType::TimeWraith));
+        assert!(all.contains(&HostileType::LoopStalker));
+        assert!(all.contains(&HostileType::EchoBeast));
+        assert!(all.contains(&HostileType::TemporalParasite));
+        assert!(all.contains(&HostileType::ChronoSpider));
     }
 
     #[test]
     fn test_hostile_creature_new() {
-        let creature = HostileCreature::new(HostileType::ShellBorer);
+        let creature = HostileCreature::new(HostileType::LoopStalker);
 
-        assert_eq!(creature.creature_type(), HostileType::ShellBorer);
+        assert_eq!(creature.creature_type(), HostileType::LoopStalker);
         assert_eq!(creature.hp(), 80);
         assert_eq!(creature.max_hp(), 80);
-        assert_eq!(creature.damage(), 10);
-        assert!((creature.speed() - 0.8).abs() < f32::EPSILON);
+        assert_eq!(creature.damage(), 15);
+        assert!((creature.speed() - 1.3).abs() < f32::EPSILON);
         assert!(creature.is_alive());
         assert!(creature.is_active());
+        assert_eq!(creature.loop_count(), 1);
+    }
+
+    #[test]
+    fn test_hostile_creature_new_with_loop() {
+        let creature = HostileCreature::new_with_loop(HostileType::TimeWraith, 5);
+
+        assert_eq!(creature.loop_count(), 5);
+        // HP should be scaled: 60 * (1.0 + 0.4) = 84
+        assert_eq!(creature.max_hp(), 84);
+        assert_eq!(creature.hp(), 84);
+        // Damage should be scaled: 12 * 1.4 = 16
+        assert_eq!(creature.damage(), 16);
     }
 
     #[test]
     fn test_hostile_creature_take_damage() {
-        let mut creature = HostileCreature::new(HostileType::BloodLeech);
-        assert_eq!(creature.hp(), 30);
+        let mut creature = HostileCreature::new(HostileType::EchoBeast);
+        assert_eq!(creature.hp(), 100);
 
-        let dealt = creature.take_damage(10);
-        assert_eq!(dealt, 10);
-        assert_eq!(creature.hp(), 20);
+        let dealt = creature.take_damage(30);
+        assert_eq!(dealt, 30);
+        assert_eq!(creature.hp(), 70);
         assert!(creature.is_alive());
     }
 
     #[test]
     fn test_hostile_creature_death() {
-        let mut creature = HostileCreature::new(HostileType::ScaleTick);
+        let mut creature = HostileCreature::new(HostileType::TemporalParasite);
         creature.take_damage(50);
 
         assert_eq!(creature.hp(), 0);
@@ -550,7 +625,7 @@ mod tests {
 
     #[test]
     fn test_hostile_creature_overkill() {
-        let mut creature = HostileCreature::new(HostileType::ScaleTick);
+        let mut creature = HostileCreature::new(HostileType::TemporalParasite);
         let dealt = creature.take_damage(1000);
 
         assert_eq!(dealt, 40);
@@ -559,67 +634,81 @@ mod tests {
 
     #[test]
     fn test_hostile_creature_attack() {
-        let creature = HostileCreature::new(HostileType::NeuralWasp);
-        assert_eq!(creature.attack(), 15);
+        let creature = HostileCreature::new(HostileType::ChronoSpider);
+        assert_eq!(creature.attack(), 10);
     }
 
     #[test]
     fn test_hostile_creature_attack_when_dead() {
-        let mut creature = HostileCreature::new(HostileType::NeuralWasp);
+        let mut creature = HostileCreature::new(HostileType::ChronoSpider);
         creature.take_damage(100);
         assert_eq!(creature.attack(), 0);
     }
 
     #[test]
     fn test_hostile_creature_attack_when_inactive() {
-        let mut creature = HostileCreature::new(HostileType::NeuralWasp);
+        let mut creature = HostileCreature::new(HostileType::ChronoSpider);
         creature.set_active(false);
         assert_eq!(creature.attack(), 0);
     }
 
     #[test]
-    fn test_hostile_creature_use_ability_drain() {
-        let creature = HostileCreature::new(HostileType::ScaleTick);
+    fn test_hostile_creature_use_ability_chronal_drain() {
+        let creature = HostileCreature::new(HostileType::TimeWraith);
         let result = creature.use_ability();
 
         assert!(result.success);
-        assert_eq!(result.damage, 5);
-        assert!(result.effect.contains("Drains"));
+        assert_eq!(result.damage, 0);
+        assert!(result.effect.contains("loop counter"));
     }
 
     #[test]
-    fn test_hostile_creature_use_ability_tunnel() {
-        let creature = HostileCreature::new(HostileType::ShellBorer);
+    fn test_hostile_creature_use_ability_deja_vu() {
+        let creature = HostileCreature::new(HostileType::LoopStalker);
         let result = creature.use_ability();
 
         assert!(result.success);
-        assert_eq!(result.damage, 15);
-        assert!(result.area_radius > 0.0);
+        assert_eq!(result.effect_duration, 1);
+        assert!(result.effect.contains("cannot move"));
     }
 
     #[test]
-    fn test_hostile_creature_use_ability_swarm() {
-        let creature = HostileCreature::new(HostileType::NeuralWasp);
+    fn test_hostile_creature_use_ability_resonance() {
+        let mut creature = HostileCreature::new(HostileType::EchoBeast);
+        creature.register_death_at_location();
+        creature.register_death_at_location();
         let result = creature.use_ability();
 
         assert!(result.success);
-        assert_eq!(result.damage, 45); // 15 * 3
+        // Base damage 20 + (2 deaths * 10) = 40
+        assert_eq!(result.damage, 40);
+        assert!(result.effect.contains("2 deaths"));
     }
 
     #[test]
-    fn test_hostile_creature_use_ability_devour() {
-        let creature = HostileCreature::new(HostileType::MouthCrawler);
+    fn test_hostile_creature_use_ability_phase() {
+        let creature = HostileCreature::new(HostileType::TemporalParasite);
         let result = creature.use_ability();
 
         assert!(result.success);
-        assert_eq!(result.damage, 999);
-        assert!(result.effect.contains("Devours"));
+        assert!(result.effect.contains("chest"));
+    }
+
+    #[test]
+    fn test_hostile_creature_use_ability_snare() {
+        let creature = HostileCreature::new_with_loop(HostileType::ChronoSpider, 5);
+        let result = creature.use_ability();
+
+        assert!(result.success);
+        assert_eq!(result.effect_duration, 3);
+        // Damage: scaled base (14) + (5 loops * 2) = 24
+        assert_eq!(result.damage, 24);
     }
 
     #[test]
     fn test_hostile_creature_ability_when_dead() {
-        let mut creature = HostileCreature::new(HostileType::MouthCrawler);
-        creature.take_damage(300);
+        let mut creature = HostileCreature::new(HostileType::TimeWraith);
+        creature.take_damage(100);
         let result = creature.use_ability();
 
         assert!(!result.success);
@@ -627,15 +716,15 @@ mod tests {
 
     #[test]
     fn test_hostile_creature_heal() {
-        let mut creature = HostileCreature::new(HostileType::MouthCrawler);
-        creature.take_damage(100);
-        assert_eq!(creature.hp(), 100);
+        let mut creature = HostileCreature::new(HostileType::EchoBeast);
+        creature.take_damage(50);
+        assert_eq!(creature.hp(), 50);
 
-        creature.heal(50);
-        assert_eq!(creature.hp(), 150);
+        creature.heal(30);
+        assert_eq!(creature.hp(), 80);
 
         creature.heal(100);
-        assert_eq!(creature.hp(), 200);
+        assert_eq!(creature.hp(), 100);
     }
 
     #[test]
@@ -643,16 +732,58 @@ mod tests {
         let result = AbilityResult::failed();
         assert!(!result.success);
         assert_eq!(result.damage, 0);
+        assert_eq!(result.effect_duration, 0);
     }
 
     #[test]
-    fn test_blood_leech_bleed_ability() {
-        let creature = HostileCreature::new(HostileType::BloodLeech);
-        let result = creature.use_ability();
+    fn test_hostile_creature_death_resonance() {
+        let mut creature = HostileCreature::new(HostileType::EchoBeast);
+        assert_eq!(creature.death_resonance(), 0);
 
-        assert!(result.success);
-        assert_eq!(result.damage, 4); // 8 / 2
-        assert!(result.area_radius > 0.0);
-        assert!(result.effect.contains("bleeding"));
+        creature.register_death_at_location();
+        assert_eq!(creature.death_resonance(), 1);
+
+        creature.register_death_at_location();
+        creature.register_death_at_location();
+        assert_eq!(creature.death_resonance(), 3);
+    }
+
+    #[test]
+    fn test_hostile_creature_phase_target() {
+        let creature = HostileCreature::new(HostileType::TemporalParasite);
+        let current_pos = IVec3::new(0, 0, 0);
+        let chests = vec![
+            IVec3::new(10, 0, 0),
+            IVec3::new(5, 0, 0),
+            IVec3::new(20, 0, 0),
+        ];
+
+        let target = creature.get_phase_target(&chests, current_pos);
+        assert_eq!(target, Some(IVec3::new(5, 0, 0)));
+    }
+
+    #[test]
+    fn test_hostile_creature_phase_target_wrong_type() {
+        let creature = HostileCreature::new(HostileType::TimeWraith);
+        let chests = vec![IVec3::new(10, 0, 0)];
+
+        let target = creature.get_phase_target(&chests, IVec3::ZERO);
+        assert!(target.is_none());
+    }
+
+    #[test]
+    fn test_hostile_creature_set_loop_count() {
+        let mut creature = HostileCreature::new(HostileType::ChronoSpider);
+        assert_eq!(creature.loop_count(), 1);
+
+        creature.set_loop_count(10);
+        assert_eq!(creature.loop_count(), 10);
+    }
+
+    #[test]
+    fn test_loop_phase_spawn_enum() {
+        assert_ne!(LoopPhaseSpawn::Dawn, LoopPhaseSpawn::Day);
+        assert_ne!(LoopPhaseSpawn::Dusk, LoopPhaseSpawn::Midnight);
+        assert_ne!(LoopPhaseSpawn::Any, LoopPhaseSpawn::Dawn);
     }
 }

@@ -1,34 +1,31 @@
-//! Passive creature types for Titan survival.
+//! Passive creature types for time-loop survival.
 //!
-//! Passive creatures that live on the Titan and provide resources.
+//! Loop-aware passive creatures that provide temporal resources.
 
 use serde::{Deserialize, Serialize};
-
-use super::hostile::TimeOfDay;
-use crate::titan::TitanZone;
 
 /// Spawn condition for passive creatures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PassiveSpawnCondition {
-    /// Zone where the creature spawns.
-    pub zone: TitanZone,
-    /// Time of day preference.
-    pub time: TimeOfDay,
+    /// Whether creature only appears on even-numbered loops.
+    pub even_loops_only: bool,
+    /// Minimum loop count for spawning.
+    pub min_loop: u32,
 }
 
-/// Types of passive creatures on the Titan.
+/// Types of passive creatures in the time loop.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PassiveType {
-    /// Moth that cleans scales, found on scale surfaces.
-    ScaleMoth,
-    /// Shrimp found near thermal vents.
-    VentShrimp,
-    /// Fish found in wound blood pools.
-    BloodFish,
-    /// Butterfly found near neural nodes.
-    NeuralButterfly,
-    /// Crab found on shell surfaces.
-    ShellCrab,
+    /// Moth that carries temporal dust, attracted to time anomalies.
+    MemoryMoth,
+    /// Fish that only appears on even-numbered loops.
+    LoopFish,
+    /// Rabbit that leaves behind loop fiber when caught.
+    EchoRabbit,
+    /// Deer that phases between timelines, drops phase antler.
+    PhaseDeer,
+    /// Turtle with a shell that anchors time, very durable.
+    AnchorTurtle,
 }
 
 impl PassiveType {
@@ -36,11 +33,11 @@ impl PassiveType {
     #[must_use]
     pub fn base_hp(&self) -> u32 {
         match self {
-            PassiveType::ScaleMoth => 8,
-            PassiveType::VentShrimp => 12,
-            PassiveType::BloodFish => 10,
-            PassiveType::NeuralButterfly => 6,
-            PassiveType::ShellCrab => 20,
+            PassiveType::MemoryMoth => 8,
+            PassiveType::LoopFish => 10,
+            PassiveType::EchoRabbit => 6,
+            PassiveType::PhaseDeer => 15,
+            PassiveType::AnchorTurtle => 20,
         }
     }
 
@@ -48,11 +45,11 @@ impl PassiveType {
     #[must_use]
     pub fn drop_item(&self) -> &'static str {
         match self {
-            PassiveType::ScaleMoth => "scale_dust",
-            PassiveType::VentShrimp => "thermal_shell",
-            PassiveType::BloodFish => "coagulant",
-            PassiveType::NeuralButterfly => "neural_dust",
-            PassiveType::ShellCrab => "shell_fragment",
+            PassiveType::MemoryMoth => "temporal_dust",
+            PassiveType::LoopFish => "time_scale",
+            PassiveType::EchoRabbit => "loop_fiber",
+            PassiveType::PhaseDeer => "phase_antler",
+            PassiveType::AnchorTurtle => "anchor_shell",
         }
     }
 
@@ -60,11 +57,11 @@ impl PassiveType {
     #[must_use]
     pub fn special_trait(&self) -> &'static str {
         match self {
-            PassiveType::ScaleMoth => "cleans_scales",
-            PassiveType::VentShrimp => "heat_resistant",
-            PassiveType::BloodFish => "wound_dweller",
-            PassiveType::NeuralButterfly => "neural_affinity",
-            PassiveType::ShellCrab => "shell_climber",
+            PassiveType::MemoryMoth => "temporal_attraction",
+            PassiveType::LoopFish => "even_loop_spawn",
+            PassiveType::EchoRabbit => "echo_trail",
+            PassiveType::PhaseDeer => "phase_shift",
+            PassiveType::AnchorTurtle => "time_anchor",
         }
     }
 
@@ -72,11 +69,11 @@ impl PassiveType {
     #[must_use]
     pub fn display_name(&self) -> &'static str {
         match self {
-            PassiveType::ScaleMoth => "Scale Moth",
-            PassiveType::VentShrimp => "Vent Shrimp",
-            PassiveType::BloodFish => "Blood Fish",
-            PassiveType::NeuralButterfly => "Neural Butterfly",
-            PassiveType::ShellCrab => "Shell Crab",
+            PassiveType::MemoryMoth => "Memory Moth",
+            PassiveType::LoopFish => "Loop Fish",
+            PassiveType::EchoRabbit => "Echo Rabbit",
+            PassiveType::PhaseDeer => "Phase Deer",
+            PassiveType::AnchorTurtle => "Anchor Turtle",
         }
     }
 
@@ -84,11 +81,11 @@ impl PassiveType {
     #[must_use]
     pub fn habitat(&self) -> &'static str {
         match self {
-            PassiveType::ScaleMoth => "scale_surface",
-            PassiveType::VentShrimp => "thermal_vents",
-            PassiveType::BloodFish => "wound_pools",
-            PassiveType::NeuralButterfly => "neural_nodes",
-            PassiveType::ShellCrab => "shell_surface",
+            PassiveType::MemoryMoth => "temporal_rifts",
+            PassiveType::LoopFish => "time_pools",
+            PassiveType::EchoRabbit => "echo_fields",
+            PassiveType::PhaseDeer => "phase_boundaries",
+            PassiveType::AnchorTurtle => "anchor_points",
         }
     }
 
@@ -96,27 +93,52 @@ impl PassiveType {
     #[must_use]
     pub fn spawn_condition(&self) -> PassiveSpawnCondition {
         match self {
-            PassiveType::ScaleMoth => PassiveSpawnCondition {
-                zone: TitanZone::ShellRidge,
-                time: TimeOfDay::Night,
+            PassiveType::MemoryMoth => PassiveSpawnCondition {
+                even_loops_only: false,
+                min_loop: 1,
             },
-            PassiveType::VentShrimp => PassiveSpawnCondition {
-                zone: TitanZone::BreathingVent,
-                time: TimeOfDay::Any,
+            PassiveType::LoopFish => PassiveSpawnCondition {
+                even_loops_only: true,
+                min_loop: 2,
             },
-            PassiveType::BloodFish => PassiveSpawnCondition {
-                zone: TitanZone::WoundSite,
-                time: TimeOfDay::Any,
+            PassiveType::EchoRabbit => PassiveSpawnCondition {
+                even_loops_only: false,
+                min_loop: 1,
             },
-            PassiveType::NeuralButterfly => PassiveSpawnCondition {
-                zone: TitanZone::NeuralNode,
-                time: TimeOfDay::Day,
+            PassiveType::PhaseDeer => PassiveSpawnCondition {
+                even_loops_only: false,
+                min_loop: 3,
             },
-            PassiveType::ShellCrab => PassiveSpawnCondition {
-                zone: TitanZone::ShellRidge,
-                time: TimeOfDay::Any,
+            PassiveType::AnchorTurtle => PassiveSpawnCondition {
+                even_loops_only: false,
+                min_loop: 1,
             },
         }
+    }
+
+    /// Check if this creature can spawn on the given loop.
+    #[must_use]
+    pub fn can_spawn_on_loop(&self, loop_count: u32) -> bool {
+        let condition = self.spawn_condition();
+        if loop_count < condition.min_loop {
+            return false;
+        }
+        if condition.even_loops_only && loop_count % 2 != 0 {
+            return false;
+        }
+        true
+    }
+
+    /// Get all passive types.
+    #[must_use]
+    pub fn all() -> &'static [PassiveType] {
+        &[
+            PassiveType::MemoryMoth,
+            PassiveType::LoopFish,
+            PassiveType::EchoRabbit,
+            PassiveType::PhaseDeer,
+            PassiveType::AnchorTurtle,
+        ]
     }
 }
 
@@ -133,6 +155,10 @@ pub struct PassiveCreature {
     drop_item: String,
     /// Special trait identifier.
     special_trait: String,
+    /// Current loop count when spawned.
+    spawn_loop: u32,
+    /// Whether the creature is phased (for PhaseDeer).
+    phased: bool,
 }
 
 impl PassiveCreature {
@@ -146,7 +172,17 @@ impl PassiveCreature {
             max_hp,
             drop_item: creature_type.drop_item().to_string(),
             special_trait: creature_type.special_trait().to_string(),
+            spawn_loop: 1,
+            phased: false,
         }
+    }
+
+    /// Create a new passive creature with loop awareness.
+    #[must_use]
+    pub fn new_with_loop(creature_type: PassiveType, loop_count: u32) -> Self {
+        let mut creature = Self::new(creature_type);
+        creature.spawn_loop = loop_count;
+        creature
     }
 
     /// Get the creature type.
@@ -179,16 +215,38 @@ impl PassiveCreature {
         &self.special_trait
     }
 
+    /// Get the loop count when this creature spawned.
+    #[must_use]
+    pub fn spawn_loop(&self) -> u32 {
+        self.spawn_loop
+    }
+
     /// Check if the creature is alive.
     #[must_use]
     pub fn is_alive(&self) -> bool {
         self.hp > 0
     }
 
+    /// Check if the creature is phased (untargetable).
+    #[must_use]
+    pub fn is_phased(&self) -> bool {
+        self.phased
+    }
+
+    /// Toggle phase state (for PhaseDeer).
+    pub fn toggle_phase(&mut self) {
+        if self.creature_type == PassiveType::PhaseDeer {
+            self.phased = !self.phased;
+        }
+    }
+
     /// Apply damage to the creature.
     ///
-    /// Returns the actual damage dealt.
+    /// Returns the actual damage dealt (0 if phased).
     pub fn take_damage(&mut self, amount: u32) -> u32 {
+        if self.phased {
+            return 0;
+        }
         let actual = amount.min(self.hp);
         self.hp = self.hp.saturating_sub(amount);
         actual
@@ -198,6 +256,9 @@ impl PassiveCreature {
     ///
     /// Returns the drop item if successful (creature dies), None otherwise.
     pub fn on_catch(&mut self) -> Option<String> {
+        if self.phased {
+            return None;
+        }
         if self.is_alive() {
             self.hp = 0;
             Some(self.drop_item.clone())
@@ -211,6 +272,13 @@ impl PassiveCreature {
     pub fn has_trait(&self, trait_name: &str) -> bool {
         self.special_trait == trait_name
     }
+
+    /// Get bonus drop chance based on loop count.
+    #[must_use]
+    pub fn bonus_drop_chance(&self, current_loop: u32) -> f32 {
+        let loops_since_spawn = current_loop.saturating_sub(self.spawn_loop);
+        (loops_since_spawn as f32 * 0.05).min(0.25)
+    }
 }
 
 #[cfg(test)]
@@ -218,84 +286,127 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_passive_type_scale_moth_stats() {
-        assert_eq!(PassiveType::ScaleMoth.base_hp(), 8);
-        assert_eq!(PassiveType::ScaleMoth.drop_item(), "scale_dust");
-        assert_eq!(PassiveType::ScaleMoth.special_trait(), "cleans_scales");
+    fn test_passive_type_memory_moth_stats() {
+        assert_eq!(PassiveType::MemoryMoth.base_hp(), 8);
+        assert_eq!(PassiveType::MemoryMoth.drop_item(), "temporal_dust");
+        assert_eq!(PassiveType::MemoryMoth.special_trait(), "temporal_attraction");
     }
 
     #[test]
-    fn test_passive_type_vent_shrimp_stats() {
-        assert_eq!(PassiveType::VentShrimp.base_hp(), 12);
-        assert_eq!(PassiveType::VentShrimp.drop_item(), "thermal_shell");
-        assert_eq!(PassiveType::VentShrimp.special_trait(), "heat_resistant");
+    fn test_passive_type_loop_fish_stats() {
+        assert_eq!(PassiveType::LoopFish.base_hp(), 10);
+        assert_eq!(PassiveType::LoopFish.drop_item(), "time_scale");
+        assert_eq!(PassiveType::LoopFish.special_trait(), "even_loop_spawn");
     }
 
     #[test]
-    fn test_passive_type_blood_fish_stats() {
-        assert_eq!(PassiveType::BloodFish.base_hp(), 10);
-        assert_eq!(PassiveType::BloodFish.drop_item(), "coagulant");
-        assert_eq!(PassiveType::BloodFish.special_trait(), "wound_dweller");
+    fn test_passive_type_echo_rabbit_stats() {
+        assert_eq!(PassiveType::EchoRabbit.base_hp(), 6);
+        assert_eq!(PassiveType::EchoRabbit.drop_item(), "loop_fiber");
+        assert_eq!(PassiveType::EchoRabbit.special_trait(), "echo_trail");
     }
 
     #[test]
-    fn test_passive_type_neural_butterfly_stats() {
-        assert_eq!(PassiveType::NeuralButterfly.base_hp(), 6);
-        assert_eq!(PassiveType::NeuralButterfly.drop_item(), "neural_dust");
-        assert_eq!(PassiveType::NeuralButterfly.special_trait(), "neural_affinity");
+    fn test_passive_type_phase_deer_stats() {
+        assert_eq!(PassiveType::PhaseDeer.base_hp(), 15);
+        assert_eq!(PassiveType::PhaseDeer.drop_item(), "phase_antler");
+        assert_eq!(PassiveType::PhaseDeer.special_trait(), "phase_shift");
     }
 
     #[test]
-    fn test_passive_type_shell_crab_stats() {
-        assert_eq!(PassiveType::ShellCrab.base_hp(), 20);
-        assert_eq!(PassiveType::ShellCrab.drop_item(), "shell_fragment");
-        assert_eq!(PassiveType::ShellCrab.special_trait(), "shell_climber");
+    fn test_passive_type_anchor_turtle_stats() {
+        assert_eq!(PassiveType::AnchorTurtle.base_hp(), 20);
+        assert_eq!(PassiveType::AnchorTurtle.drop_item(), "anchor_shell");
+        assert_eq!(PassiveType::AnchorTurtle.special_trait(), "time_anchor");
     }
 
     #[test]
     fn test_passive_type_habitats() {
-        assert_eq!(PassiveType::ScaleMoth.habitat(), "scale_surface");
-        assert_eq!(PassiveType::VentShrimp.habitat(), "thermal_vents");
-        assert_eq!(PassiveType::BloodFish.habitat(), "wound_pools");
-        assert_eq!(PassiveType::NeuralButterfly.habitat(), "neural_nodes");
-        assert_eq!(PassiveType::ShellCrab.habitat(), "shell_surface");
+        assert_eq!(PassiveType::MemoryMoth.habitat(), "temporal_rifts");
+        assert_eq!(PassiveType::LoopFish.habitat(), "time_pools");
+        assert_eq!(PassiveType::EchoRabbit.habitat(), "echo_fields");
+        assert_eq!(PassiveType::PhaseDeer.habitat(), "phase_boundaries");
+        assert_eq!(PassiveType::AnchorTurtle.habitat(), "anchor_points");
     }
 
     #[test]
     fn test_passive_type_display_names() {
-        assert_eq!(PassiveType::ScaleMoth.display_name(), "Scale Moth");
-        assert_eq!(PassiveType::VentShrimp.display_name(), "Vent Shrimp");
-        assert_eq!(PassiveType::BloodFish.display_name(), "Blood Fish");
-        assert_eq!(PassiveType::NeuralButterfly.display_name(), "Neural Butterfly");
-        assert_eq!(PassiveType::ShellCrab.display_name(), "Shell Crab");
+        assert_eq!(PassiveType::MemoryMoth.display_name(), "Memory Moth");
+        assert_eq!(PassiveType::LoopFish.display_name(), "Loop Fish");
+        assert_eq!(PassiveType::EchoRabbit.display_name(), "Echo Rabbit");
+        assert_eq!(PassiveType::PhaseDeer.display_name(), "Phase Deer");
+        assert_eq!(PassiveType::AnchorTurtle.display_name(), "Anchor Turtle");
+    }
+
+    #[test]
+    fn test_passive_type_all() {
+        let all = PassiveType::all();
+        assert_eq!(all.len(), 5);
+        assert!(all.contains(&PassiveType::MemoryMoth));
+        assert!(all.contains(&PassiveType::LoopFish));
+        assert!(all.contains(&PassiveType::EchoRabbit));
+        assert!(all.contains(&PassiveType::PhaseDeer));
+        assert!(all.contains(&PassiveType::AnchorTurtle));
+    }
+
+    #[test]
+    fn test_loop_fish_even_loop_spawn() {
+        assert!(!PassiveType::LoopFish.can_spawn_on_loop(1));
+        assert!(PassiveType::LoopFish.can_spawn_on_loop(2));
+        assert!(!PassiveType::LoopFish.can_spawn_on_loop(3));
+        assert!(PassiveType::LoopFish.can_spawn_on_loop(4));
+    }
+
+    #[test]
+    fn test_phase_deer_min_loop() {
+        assert!(!PassiveType::PhaseDeer.can_spawn_on_loop(1));
+        assert!(!PassiveType::PhaseDeer.can_spawn_on_loop(2));
+        assert!(PassiveType::PhaseDeer.can_spawn_on_loop(3));
+        assert!(PassiveType::PhaseDeer.can_spawn_on_loop(10));
+    }
+
+    #[test]
+    fn test_memory_moth_always_spawns() {
+        assert!(PassiveType::MemoryMoth.can_spawn_on_loop(1));
+        assert!(PassiveType::MemoryMoth.can_spawn_on_loop(2));
+        assert!(PassiveType::MemoryMoth.can_spawn_on_loop(100));
     }
 
     #[test]
     fn test_passive_creature_new() {
-        let creature = PassiveCreature::new(PassiveType::ShellCrab);
+        let creature = PassiveCreature::new(PassiveType::AnchorTurtle);
 
-        assert_eq!(creature.creature_type(), PassiveType::ShellCrab);
+        assert_eq!(creature.creature_type(), PassiveType::AnchorTurtle);
         assert_eq!(creature.hp(), 20);
         assert_eq!(creature.max_hp(), 20);
-        assert_eq!(creature.drop_item(), "shell_fragment");
-        assert_eq!(creature.special_trait(), "shell_climber");
+        assert_eq!(creature.drop_item(), "anchor_shell");
+        assert_eq!(creature.special_trait(), "time_anchor");
         assert!(creature.is_alive());
+        assert!(!creature.is_phased());
+    }
+
+    #[test]
+    fn test_passive_creature_new_with_loop() {
+        let creature = PassiveCreature::new_with_loop(PassiveType::LoopFish, 4);
+
+        assert_eq!(creature.spawn_loop(), 4);
+        assert_eq!(creature.creature_type(), PassiveType::LoopFish);
     }
 
     #[test]
     fn test_passive_creature_take_damage() {
-        let mut creature = PassiveCreature::new(PassiveType::VentShrimp);
-        assert_eq!(creature.hp(), 12);
+        let mut creature = PassiveCreature::new(PassiveType::EchoRabbit);
+        assert_eq!(creature.hp(), 6);
 
-        let dealt = creature.take_damage(5);
-        assert_eq!(dealt, 5);
-        assert_eq!(creature.hp(), 7);
+        let dealt = creature.take_damage(3);
+        assert_eq!(dealt, 3);
+        assert_eq!(creature.hp(), 3);
         assert!(creature.is_alive());
     }
 
     #[test]
     fn test_passive_creature_death() {
-        let mut creature = PassiveCreature::new(PassiveType::NeuralButterfly);
+        let mut creature = PassiveCreature::new(PassiveType::MemoryMoth);
         creature.take_damage(10);
 
         assert_eq!(creature.hp(), 0);
@@ -304,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_passive_creature_overkill() {
-        let mut creature = PassiveCreature::new(PassiveType::ScaleMoth);
+        let mut creature = PassiveCreature::new(PassiveType::MemoryMoth);
         let dealt = creature.take_damage(100);
 
         assert_eq!(dealt, 8);
@@ -313,18 +424,18 @@ mod tests {
 
     #[test]
     fn test_passive_creature_on_catch() {
-        let mut creature = PassiveCreature::new(PassiveType::BloodFish);
+        let mut creature = PassiveCreature::new(PassiveType::EchoRabbit);
         assert!(creature.is_alive());
 
         let drop = creature.on_catch();
         assert!(drop.is_some());
-        assert_eq!(drop.unwrap(), "coagulant");
+        assert_eq!(drop.unwrap(), "loop_fiber");
         assert!(!creature.is_alive());
     }
 
     #[test]
     fn test_passive_creature_on_catch_when_dead() {
-        let mut creature = PassiveCreature::new(PassiveType::BloodFish);
+        let mut creature = PassiveCreature::new(PassiveType::EchoRabbit);
         creature.take_damage(100);
 
         let drop = creature.on_catch();
@@ -333,22 +444,65 @@ mod tests {
 
     #[test]
     fn test_passive_creature_has_trait() {
-        let creature = PassiveCreature::new(PassiveType::VentShrimp);
+        let creature = PassiveCreature::new(PassiveType::PhaseDeer);
 
-        assert!(creature.has_trait("heat_resistant"));
-        assert!(!creature.has_trait("cleans_scales"));
+        assert!(creature.has_trait("phase_shift"));
+        assert!(!creature.has_trait("temporal_attraction"));
+    }
+
+    #[test]
+    fn test_phase_deer_phasing() {
+        let mut creature = PassiveCreature::new(PassiveType::PhaseDeer);
+        assert!(!creature.is_phased());
+
+        creature.toggle_phase();
+        assert!(creature.is_phased());
+
+        creature.toggle_phase();
+        assert!(!creature.is_phased());
+    }
+
+    #[test]
+    fn test_phased_creature_immune_to_damage() {
+        let mut creature = PassiveCreature::new(PassiveType::PhaseDeer);
+        creature.toggle_phase();
+        assert!(creature.is_phased());
+
+        let dealt = creature.take_damage(100);
+        assert_eq!(dealt, 0);
+        assert_eq!(creature.hp(), 15);
+    }
+
+    #[test]
+    fn test_phased_creature_cannot_be_caught() {
+        let mut creature = PassiveCreature::new(PassiveType::PhaseDeer);
+        creature.toggle_phase();
+
+        let drop = creature.on_catch();
+        assert!(drop.is_none());
+        assert!(creature.is_alive());
+    }
+
+    #[test]
+    fn test_non_phase_deer_cannot_phase() {
+        let mut creature = PassiveCreature::new(PassiveType::MemoryMoth);
+        creature.toggle_phase();
+        assert!(!creature.is_phased());
+    }
+
+    #[test]
+    fn test_bonus_drop_chance() {
+        let creature = PassiveCreature::new_with_loop(PassiveType::MemoryMoth, 1);
+
+        assert!((creature.bonus_drop_chance(1) - 0.0).abs() < f32::EPSILON);
+        assert!((creature.bonus_drop_chance(2) - 0.05).abs() < f32::EPSILON);
+        assert!((creature.bonus_drop_chance(6) - 0.25).abs() < f32::EPSILON);
+        assert!((creature.bonus_drop_chance(100) - 0.25).abs() < f32::EPSILON);
     }
 
     #[test]
     fn test_all_passive_types_have_unique_drops() {
-        let types = [
-            PassiveType::ScaleMoth,
-            PassiveType::VentShrimp,
-            PassiveType::BloodFish,
-            PassiveType::NeuralButterfly,
-            PassiveType::ShellCrab,
-        ];
-
+        let types = PassiveType::all();
         let drops: Vec<_> = types.iter().map(|t| t.drop_item()).collect();
         for (i, drop) in drops.iter().enumerate() {
             for (j, other) in drops.iter().enumerate() {
@@ -360,37 +514,37 @@ mod tests {
     }
 
     #[test]
-    fn test_passive_spawn_condition_scale_moth() {
-        let cond = PassiveType::ScaleMoth.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::ShellRidge);
-        assert_eq!(cond.time, TimeOfDay::Night);
+    fn test_spawn_condition_memory_moth() {
+        let cond = PassiveType::MemoryMoth.spawn_condition();
+        assert!(!cond.even_loops_only);
+        assert_eq!(cond.min_loop, 1);
     }
 
     #[test]
-    fn test_passive_spawn_condition_vent_shrimp() {
-        let cond = PassiveType::VentShrimp.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::BreathingVent);
-        assert_eq!(cond.time, TimeOfDay::Any);
+    fn test_spawn_condition_loop_fish() {
+        let cond = PassiveType::LoopFish.spawn_condition();
+        assert!(cond.even_loops_only);
+        assert_eq!(cond.min_loop, 2);
     }
 
     #[test]
-    fn test_passive_spawn_condition_blood_fish() {
-        let cond = PassiveType::BloodFish.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::WoundSite);
-        assert_eq!(cond.time, TimeOfDay::Any);
+    fn test_spawn_condition_echo_rabbit() {
+        let cond = PassiveType::EchoRabbit.spawn_condition();
+        assert!(!cond.even_loops_only);
+        assert_eq!(cond.min_loop, 1);
     }
 
     #[test]
-    fn test_passive_spawn_condition_neural_butterfly() {
-        let cond = PassiveType::NeuralButterfly.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::NeuralNode);
-        assert_eq!(cond.time, TimeOfDay::Day);
+    fn test_spawn_condition_phase_deer() {
+        let cond = PassiveType::PhaseDeer.spawn_condition();
+        assert!(!cond.even_loops_only);
+        assert_eq!(cond.min_loop, 3);
     }
 
     #[test]
-    fn test_passive_spawn_condition_shell_crab() {
-        let cond = PassiveType::ShellCrab.spawn_condition();
-        assert_eq!(cond.zone, TitanZone::ShellRidge);
-        assert_eq!(cond.time, TimeOfDay::Any);
+    fn test_spawn_condition_anchor_turtle() {
+        let cond = PassiveType::AnchorTurtle.spawn_condition();
+        assert!(!cond.even_loops_only);
+        assert_eq!(cond.min_loop, 1);
     }
 }

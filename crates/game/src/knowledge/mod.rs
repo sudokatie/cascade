@@ -3,6 +3,6 @@
 //! Tracks what the player has learned about the world,
 //! preserving knowledge across time loop resets.
 
-mod discoveries;
+pub mod discoveries;
 
 pub use discoveries::{DiscoveryID, KnowledgeCategory, KnowledgeSystem};

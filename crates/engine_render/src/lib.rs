@@ -1,7 +1,7 @@
-//! Rendering system for the Titan game engine.
+//! Rendering system for the Cascade game engine.
 //!
 //! Provides GPU abstraction, voxel rendering, and visual effects
-//! including Titan-specific rendering for the colossus survival game.
+//! including temporal effects for the time-loop survival game.
 
 pub mod backend;
 pub mod camera;
@@ -11,6 +11,7 @@ pub mod ghost_block;
 pub mod lighting;
 mod renderer;
 pub mod sky;
+pub mod temporal;
 pub mod titan;
 pub mod voxel;
 

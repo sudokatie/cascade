@@ -361,6 +361,7 @@ name = "cascade_game"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "engine_ai",
  "engine_audio",
  "engine_core",
@@ -925,6 +926,7 @@ dependencies = [
  "glam",
  "image",
  "pollster",
+ "serde",
  "thiserror 2.0.18",
  "tracing",
  "wgpu 24.0.5",
@@ -940,6 +942,7 @@ dependencies = [
  "egui-winit",
  "engine_core",
  "engine_physics",
+ "serde",
  "thiserror 2.0.18",
  "tracing",
 ]
