@@ -3,10 +3,17 @@
 pub mod commands;
 pub mod cross_dimension;
 pub mod dimension_sync;
+pub mod loop_sync;
 pub mod position_sync;
+pub mod state_sync;
 pub mod titan_sync;
 
+pub use loop_sync::{deserialize_loop_state, serialize_loop_state, LoopStatePacket, LoopSync};
 pub use position_sync::{deserialize_positions, serialize_positions, PositionSync};
+pub use state_sync::{
+    deserialize_persistent_state, serialize_persistent_state, ChestStatePacket,
+    KnowledgeStatePacket, PersistentStatePacket, PersistentSync,
+};
 pub use titan_sync::{deserialize_titan_state, serialize_titan_state, TitanSync};
 
 use std::time::Duration;

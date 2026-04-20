@@ -16,6 +16,7 @@ bytemuck.workspace = true
 glam.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+serde.workspace = true
 pollster.workspace = true
 image.workspace = true
 

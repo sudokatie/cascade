@@ -12,6 +12,7 @@ engine_physics = { path = "../engine_physics" }
 egui.workspace = true
 egui-wgpu.workspace = true
 egui-winit.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 
